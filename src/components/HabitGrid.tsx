@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 const HABITS = [
   { id: 'sn', name: 'Safety Never', target: 7, identity: 'A complexity translator.' },
@@ -11,20 +12,76 @@ const HABITS = [
 
 const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-// 0=empty, 1=full, 2=floor, 3=rest
+function getWeekStart() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  return d.toISOString().split('T')[0];
+}
+
 export default function HabitGrid() {
+  const weekStart = getWeekStart();
   const [cells, setCells] = useState(
     Object.fromEntries(HABITS.map(h => [h.id, [0, 0, 0, 0, 0, 0, 0]]))
   );
+  const [loading, setLoading] = useState(true);
 
-  function cycleDot(habitId: string, dayIdx: number) {
+  useEffect(() => {
+    async function loadData() {
+      const { data, error } = await supabase
+        .from('habit_entries')
+        .select('*')
+        .eq('week_start', weekStart);
+
+      if (error) { console.error(error); setLoading(false); return; }
+
+      if (data && data.length > 0) {
+        const loaded = Object.fromEntries(HABITS.map(h => [h.id, [0, 0, 0, 0, 0, 0, 0]]));
+        data.forEach(row => {
+          if (loaded[row.habit_id]) {
+            loaded[row.habit_id][row.day_index] = row.state;
+          }
+        });
+        setCells(loaded);
+      }
+      setLoading(false);
+    }
+    loadData();
+  }, [weekStart]);
+
+  async function cycleDot(habitId: string, dayIdx: number) {
+    const newState = (cells[habitId][dayIdx] + 1) % 4;
+
     setCells(prev => {
       const updated = { ...prev };
       updated[habitId] = [...prev[habitId]];
-      updated[habitId][dayIdx] = (updated[habitId][dayIdx] + 1) % 4;
+      updated[habitId][dayIdx] = newState;
       return updated;
     });
+
+    const { data: existing } = await supabase
+      .from('habit_entries')
+      .select('id')
+      .eq('week_start', weekStart)
+      .eq('habit_id', habitId)
+      .eq('day_index', dayIdx)
+      .maybesingle();
+
+    if (existing) {
+      await supabase
+        .from('habit_entries')
+        .update({ state: newState })
+        .eq('id', existing.id);
+    } else {
+      await supabase
+        .from('habit_entries')
+        .insert({ week_start: weekStart, habit_id: habitId, day_index: dayIdx, state: newState });
+    }
   }
+
+  if (loading) return <div className="text-stone-500 font-mono text-xs mt-8">loading...</div>;
 
   return (
     <div className="w-full max-w-xl space-y-6 mt-8">
@@ -52,7 +109,7 @@ export default function HabitGrid() {
                   {state === 0 && <div className="w-1 h-1 rounded-full bg-stone-700" />}
                   {state === 1 && <div className="absolute inset-0.5 rounded-sm" style={{ backgroundColor: '#6495ED' }} />}
                   {state === 2 && <div className="absolute inset-0.5 rounded-sm border-2" style={{ borderColor: '#6495ED' }} />}
-                  {state === 3 && <div className="font-mono text-3xl text-stone-500 leading-none">-</div>}
+                  {state === 3 && <div className="font-mono text-3xl text-stone-500 leading-none">–</div>}
                 </button>
               );
             })}
