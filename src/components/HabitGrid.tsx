@@ -62,12 +62,13 @@ export default function HabitGrid() {
     });
 
     const { data: existing } = await supabase
-      .from('habit_entries')
-      .select('id')
-      .eq('week_start', weekStart)
-      .eq('habit_id', habitId)
-      .eq('day_index', dayIdx)
-      .maybesingle();
+    .from('habit_entries')
+    .select('id')
+    .eq('week_start', weekStart)
+    .eq('habit_id', habitId)
+    .eq('day_index', dayIdx)
+    .limit(1)
+    .then(({ data }) => ({ data: data?.[0] ?? null }));
 
     if (existing) {
       await supabase
