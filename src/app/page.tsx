@@ -1,5 +1,6 @@
 'use client';
 import HabitGrid from '@/components/HabitGrid';
+import FreedomTracker from '@/components/FreedomTracker';
 export default function Home() {
   return (
     <main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center p-8">
@@ -21,6 +22,7 @@ export default function Home() {
           <li>— A person who owns their home outright.</li>
         </ul>
         <HabitGrid />
+        <FreedomTracker />
       </div>
     </main>
   );

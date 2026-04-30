@@ -35,7 +35,7 @@ export default function HabitGrid() {
         .select('*')
         .eq('week_start', weekStart);
 
-      if (error) { console.error(error); setLoading(false); return; }
+      if (error) { console.error(JSON.stringify(error)); setLoading(false); return; }
 
       if (data && data.length > 0) {
         const loaded = Object.fromEntries(HABITS.map(h => [h.id, [0, 0, 0, 0, 0, 0, 0]]));
