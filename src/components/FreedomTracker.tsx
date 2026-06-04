@@ -1,18 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+import { supabase } from '@/lib/supabase';
 
 const TOTAL = 5800;
 const STEP = 50;
 
 export default function FreedomTracker() {
-  const [paid, setPaid] = useState<Set<number>>(new Set());
+  const [paid, setPaid] = useState(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,35 +17,33 @@ export default function FreedomTracker() {
         .from('freedom_payments')
         .select('increment_index')
         .eq('paid', true);
+      
       if (data) {
-        setPaid(new Set(data.map((r) => r.increment_index)));
+        setPaid(new Set(data.map(r => r.increment_index)));
       }
       setLoading(false);
     };
+    
     fetchData();
   }, []);
 
-  const toggle = async (i: number) => {
-    const allFilled = Array.from({ length: i + 1 }, (_, idx) => idx).every(idx => paid.has(idx));
+  const toggle = (i) => {
+    console.log('clicked', i);
     const next = new Set(paid);
-    
-    if (allFilled) {
-      // clicking the last filled box unfills it and everything after
+    const isFilled = paid.has(i);
+  
+    if (isFilled) {
       for (let idx = i; idx < TOTAL; idx++) {
         next.delete(idx);
+        supabase.from('freedom_payments').upsert({ increment_index: idx, paid: false }).then(() => {}, err => console.error('Delete error:', err));
       }
     } else {
-      // fill everything up to and including i
       for (let idx = 0; idx <= i; idx++) {
         next.add(idx);
+        supabase.from('freedom_payments').upsert({ increment_index: idx, paid: true }).then(() => {}, err => console.error('Upsert error:', err));
       }
     }
-  
     setPaid(next);
-  
-    const toUpsert = Array.from(next).map(idx => ({ increment_index: idx, paid: true }));
-    await supabase.from('freedom_payments').delete().neq('increment_index', -1);
-    await supabase.from('freedom_payments').upsert(toUpsert);
   };
 
   const paidAmt = paid.size * STEP;
@@ -70,10 +64,15 @@ export default function FreedomTracker() {
       <div className="flex flex-wrap gap-1">
         {Array.from({ length: TOTAL }, (_, i) => (
           <button
-            key={i}
-            onClick={() => toggle(i)}
+          type="button"
+          key={i}
+          onClick={() => toggle(i)}
             className="w-2 h-2 rounded-sm"
-            style={{ backgroundColor: paid.has(i) ? '#6495ED' : '#292524', border: '1px solid', borderColor: paid.has(i) ? '#6495ED' : '#44403c' }}
+            style={{
+              backgroundColor: paid.has(i) ? '#6495ED' : '#292524',
+              border: '1px solid',
+              borderColor: paid.has(i) ? '#6495ED' : '#44403c'
+            }}
             title={'$' + ((i + 1) * STEP)}
           />
         ))}
