@@ -8,46 +8,45 @@ const TOTAL = 5800;
 const STEP = 50;
 
 export default function FreedomTracker() {
-  const [paid, setPaid] = useState(new Set());
+  const [paidCount, setPaidCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       const { data } = await supabase
-        .from('freedom_payments')
-        .select('increment_index')
-        .eq('paid', true);
-      
+        .from('freedom_state')
+        .select('paid_count')
+        .eq('id', 1)
+        .single();
+
       if (data) {
-        setPaid(new Set(data.map(r => r.increment_index)));
+        setPaidCount(data.paid_count);
       }
       setLoading(false);
     };
-    
+
     fetchData();
   }, []);
 
-  const toggle = (i) => {
-    console.log('clicked', i);
-    const next = new Set(paid);
-    const isFilled = paid.has(i);
-  
-    if (isFilled) {
-      for (let idx = i; idx < TOTAL; idx++) {
-        next.delete(idx);
-        supabase.from('freedom_payments').upsert({ increment_index: idx, paid: false }).then(() => {}, err => console.error('Delete error:', err));
-      }
+  const toggle = async (i: number) => {
+    let newCount: number;
+    
+    if (i < paidCount) {
+      newCount = i;
     } else {
-      for (let idx = 0; idx <= i; idx++) {
-        next.add(idx);
-        supabase.from('freedom_payments').upsert({ increment_index: idx, paid: true }).then(() => {}, err => console.error('Upsert error:', err));
-      }
+      newCount = i + 1;
     }
-    setPaid(next);
+    
+    setPaidCount(newCount);
+    
+    await supabase
+      .from('freedom_state')
+      .update({ paid_count: newCount })
+      .eq('id', 1);
   };
 
-  const paidAmt = paid.size * STEP;
-  const pct = ((paid.size / TOTAL) * 100).toFixed(1);
+  const paidAmt = paidCount * STEP;
+  const pct = ((paidCount / TOTAL) * 100).toFixed(1);
 
   if (loading) return <div className="text-stone-500 font-mono text-xs mb-8">loading...</div>;
 
@@ -64,14 +63,14 @@ export default function FreedomTracker() {
       <div className="flex flex-wrap gap-1">
         {Array.from({ length: TOTAL }, (_, i) => (
           <button
-          type="button"
-          key={i}
-          onClick={() => toggle(i)}
+            type="button"
+            key={i}
+            onClick={() => toggle(i)}
             className="w-2 h-2 rounded-sm"
             style={{
-              backgroundColor: paid.has(i) ? '#6495ED' : '#292524',
+              backgroundColor: i < paidCount ? '#6495ED' : '#292524',
               border: '1px solid',
-              borderColor: paid.has(i) ? '#6495ED' : '#44403c'
+              borderColor: i < paidCount ? '#6495ED' : '#44403c'
             }}
             title={'$' + ((i + 1) * STEP)}
           />
