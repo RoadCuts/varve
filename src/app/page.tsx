@@ -3,6 +3,7 @@ import HabitGrid from '@/components/HabitGrid';
 import FreedomTracker from '@/components/FreedomTracker';
 import HabitHistory from '@/components/HabitHistory';
 import WeeklyReflection from '@/components/WeeklyReflection';
+import RewardLedger from '@/components/RewardLedger';
 export default function Home() {
   return (
     <main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center p-8">
@@ -27,6 +28,7 @@ export default function Home() {
         <FreedomTracker />
         <HabitHistory />
         <WeeklyReflection />
+        <RewardLedger />
       </div>
     </main>
   );
