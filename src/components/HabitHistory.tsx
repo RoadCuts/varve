@@ -13,13 +13,14 @@ const HABITS = [
   { id: 'ai', label: 'AI Learning' },
 ];
 
-// state -> cell color, matching the main grid's language
+// state -> cell color, matching HabitGrid's actual encoding:
+// 0 = None, 1 = Full, 2 = Floor, 3 = Rest
 const STATE_STYLES: Record<number, { bg: string; border: string }> = {
-  0: { bg: '#1c1917', border: '#292524' }, // None
-  1: { bg: '#44403c', border: '#44403c' }, // Rest
-  2: { bg: '#1c1917', border: '#6495ED' }, // Floor
-  3: { bg: '#6495ED', border: '#6495ED' }, // Full
-};
+    0: { bg: '#1c1917', border: '#292524' }, // None
+    1: { bg: '#6495ED', border: '#6495ED' }, // Full — solid blue
+    2: { bg: '#1c1917', border: '#6495ED' }, // Floor — blue frame
+    3: { bg: '#44403c', border: '#44403c' }, // Rest — gray
+  };
 
 export default function HabitHistory() {
   const [open, setOpen] = useState(false);
