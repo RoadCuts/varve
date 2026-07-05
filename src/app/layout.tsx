@@ -15,9 +15,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Varve",
   description: "Incremental work that sediments into a full roadcut over time.",
+  manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.ico",
-    apple: "/favicon.ico",
+    icon: "/icon-512.png",
+    apple: "/icon-512.png",
   },
 };
 
