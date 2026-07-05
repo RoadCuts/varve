@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   description: "Incremental work that sediments into a full roadcut over time.",
   icons: {
     icon: "/Varve.png",
+    apple: "/Varve.png",
   },
 };
 
