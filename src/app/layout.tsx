@@ -19,7 +19,6 @@ export const metadata: Metadata = {
     icon: "/Varve.png",
     apple: "/Varve.png",
   },
-  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
