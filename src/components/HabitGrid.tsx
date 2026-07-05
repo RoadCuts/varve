@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
 const HABITS = [
-  { id: 'sn', name: 'Safety Never', target: 7, identity: 'A complexity translator.' },
-  { id: 'move', name: 'Movement', target: 7, identity: 'A body that supports the work.' },
-  { id: 'li', name: 'LinkedIn', target: 7, identity: 'A public thinker.' },
-  { id: 'ai', name: 'AI Learning', target: 5, identity: 'A builder who keeps pace.' },
+  { id: 'sn', name: 'Biggest Rock', target: 7 },
+  { id: 'move', name: 'Movement', target: 7 },
+  { id: 'li', name: 'LinkedIn', target: 7 },
+  { id: 'ai', name: 'AI Learning', target: 5 },
 ];
 
 const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -26,26 +26,50 @@ export default function HabitGrid() {
   const [cells, setCells] = useState(
     Object.fromEntries(HABITS.map(h => [h.id, [0, 0, 0, 0, 0, 0, 0]]))
   );
+  const [subtitles, setSubtitles] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
-      const { data, error } = await supabase
+      // Load habit entries
+      const { data: entries, error: entriesError } = await supabase
         .from('habit_entries')
         .select('*')
         .eq('week_start', weekStart);
 
-      if (error) { console.error(JSON.stringify(error)); setLoading(false); return; }
+      if (entriesError) { console.error(JSON.stringify(entriesError)); setLoading(false); return; }
 
-      if (data && data.length > 0) {
+      if (entries && entries.length > 0) {
         const loaded = Object.fromEntries(HABITS.map(h => [h.id, [0, 0, 0, 0, 0, 0, 0]]));
-        data.forEach(row => {
+        entries.forEach(row => {
           if (loaded[row.habit_id]) {
             loaded[row.habit_id][row.day_index] = row.state;
           }
         });
         setCells(loaded);
       }
+
+      // Load subtitles - get most recent for each habit
+      const { data: subtitleData, error: subtitleError } = await supabase
+        .from('habit_subtitles')
+        .select('*')
+        .in('habit_id', HABITS.map(h => h.id))
+        .order('created_at', { ascending: false });
+
+      if (!subtitleError && subtitleData) {
+        const latestSubtitles: Record<string, string> = {};
+        const seenHabits = new Set<string>();
+        
+        subtitleData.forEach(row => {
+          if (!seenHabits.has(row.habit_id)) {
+            latestSubtitles[row.habit_id] = row.subtitle_text;
+            seenHabits.add(row.habit_id);
+          }
+        });
+        
+        setSubtitles(latestSubtitles);
+      }
+
       setLoading(false);
     }
     loadData();
@@ -62,13 +86,13 @@ export default function HabitGrid() {
     });
 
     const { data: existing } = await supabase
-    .from('habit_entries')
-    .select('id')
-    .eq('week_start', weekStart)
-    .eq('habit_id', habitId)
-    .eq('day_index', dayIdx)
-    .limit(1)
-    .then(({ data }) => ({ data: data?.[0] ?? null }));
+      .from('habit_entries')
+      .select('id')
+      .eq('week_start', weekStart)
+      .eq('habit_id', habitId)
+      .eq('day_index', dayIdx)
+      .limit(1)
+      .then(({ data }) => ({ data: data?.[0] ?? null }));
 
     if (existing) {
       await supabase
@@ -82,6 +106,19 @@ export default function HabitGrid() {
     }
   }
 
+  async function updateSubtitle(habitId: string, newText: string) {
+    setSubtitles(prev => ({ ...prev, [habitId]: newText }));
+
+    // Save to Supabase
+    const { error } = await supabase
+      .from('habit_subtitles')
+      .insert({ habit_id: habitId, subtitle_text: newText });
+
+    if (error) {
+      console.error('Error saving subtitle:', JSON.stringify(error));
+    }
+  }
+
   if (loading) return <div className="text-stone-500 font-mono text-xs mt-8">loading...</div>;
 
   return (
@@ -89,11 +126,17 @@ export default function HabitGrid() {
       {HABITS.map(h => (
         <div key={h.id}>
           <div className="flex items-baseline justify-between mb-2">
-            <div>
+            <div className="flex-1">
               <div className="text-lg font-serif text-stone-100">{h.name}</div>
-              <div className="text-xs italic text-stone-500">{h.identity}</div>
+              <input
+                type="text"
+                value={subtitles[h.id] || ''}
+                onChange={e => updateSubtitle(h.id, e.target.value)}
+                placeholder="Add a subtitle..."
+                className="text-xs italic text-stone-500 bg-transparent border-b border-stone-700 focus:border-stone-500 focus:outline-none w-full mt-1 placeholder-stone-700"
+              />
             </div>
-            <div className="font-mono text-xs text-stone-500">
+            <div className="font-mono text-xs text-stone-500 ml-4 whitespace-nowrap">
               {cells[h.id].filter(d => d === 1 || d === 2).length}/{h.target}
             </div>
           </div>
